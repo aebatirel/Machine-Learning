@@ -3,7 +3,7 @@ import numpy as np
 # Initialize w and b vector for every layer.
 def initialize_weights(dimOfLayers):
     params = {}
-    np.random.seed(3)
+    np.random.seed()
     L = len(dimOfLayers)
     for l in range(1,L):
         params['W' + str(l)] = np.random.randn(dimOfLayers[l],dimOfLayers[l-1]) * 0.01
@@ -22,9 +22,9 @@ def sigmoid( Z ):
 def sigmoid_backward(dA,cache):
     Z = cache
     s = 1 / (1 + np.exp(-Z))
-    dZ = np.multiply(dA ,np.multiply(s , (1-s)))
-
+    dZ = np.asarray(np.multiply(dA ,np.multiply(s , (1-s))))
     return dZ
+
 
 def relu( Z ):
     return np.maximum(Z,0), Z
@@ -69,7 +69,7 @@ def linear_backward(dZ, cache):
     A_prev, W , b = cache
     m = A_prev.shape[1]
     dW = 1 / m * np.dot(dZ,A_prev.T)
-    db = 1 / m * np.sum(dZ, axis = 1)
+    db = 1 / m * np.sum(dZ, axis = 1,keepdims = True)
     dA_prev = np.dot(W.T,dZ)
     return dA_prev, dW, db
 
@@ -105,15 +105,39 @@ def update_neurons(parameters, grads, learning_rate):
         parameters["W" + str(l+1)] = parameters["W" + str(l+1)] - learning_rate * grads["dW" + str(l+1)]
         parameters["b" + str(l+1)] = parameters["b" + str(l+1)] - learning_rate * grads["db" + str(l+1)]
     return parameters
-p = {'b1': np.array([[ 0.04153939],
-       [-1.11792545],
-       [ 0.53905832]]), 'b2': np.array([[-0.74787095]]), 'W2':  np.array([[-0.5961597 , -0.0191305 ,  1.17500122]]), 'W1':  np.array([[-0.41675785, -0.05626683, -2.1361961 ,  1.64027081],
-       [-1.79343559, -0.84174737,  0.50288142, -1.24528809],
-       [-1.05795222, -0.90900761,  0.55145404,  2.29220801]])}
-g = {'dW1':  np.array([[ 1.78862847,  0.43650985,  0.09649747, -1.8634927 ],
-       [-0.2773882 , -0.35475898, -0.08274148, -0.62700068],
-       [-0.04381817, -0.47721803, -1.31386475,  0.88462238]]), 'db2':  np.array([[ 0.98236743]]), 'dW2':  np.array([[-0.40467741, -0.54535995, -1.54647732]]), 'db1':  np.array([[ 0.88131804],
-       [ 1.70957306],
-       [ 0.05003364]])}
 
-print(update_neurons(p,g,0.1))
+
+def train_model(X,Y,layer_dims,learning_rate,num_iterations):
+    np.random.seed()
+    X = np.asarray(X)
+    costs = []
+    parameters = initialize_weights(layer_dims)
+    for i in range(0,num_iterations):
+        #Forward propagation
+        AL,caches = forward_propagate_layers(X,parameters)
+        #Cost calculation
+        cost = calculate_cost(AL,Y)
+        #Back propagation
+        grads = backward_propagate_layers(AL,Y,caches)
+        #Updating parameters
+        parameters = update_neurons(parameters,grads,learning_rate)
+        if i % 100 == 0:
+            costs.append(cost)
+    return parameters,costs
+
+def predict(test_data,params,confidence):
+    m = test_data.shape[1]
+    predictions = np.zeros((1,m))
+    res,cachesList = forward_propagate_layers(test_data,params)
+    for i in range(m):
+        if res[0,i] >= confidence:
+            predictions[0,i] = 1
+        else:
+            predictions[0,i] = 0
+    return predictions
+
+def visualize_cost(costs):
+    fig,ax = plt.subplots()
+    ax.plot(costs)
+    ax.set(xlabel = 'iteration num',ylabel = 'cost',title = 'Cost values over iterations')
+    plt.show()
